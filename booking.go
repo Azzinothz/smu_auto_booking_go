@@ -136,8 +136,8 @@ func (booker *Booker) BookRoom(room *RoomStatus, startTime string, endTime strin
 }
 
 // FetchRoomsStatus fetches status of all rooms according to the given date
-func (booker *Booker) FetchRoomsStatus(day string) (roomsStatus []*RoomStatus) {
-	c := booker.collector.Clone()
+func FetchRoomsStatus(day string) (roomsStatus []*RoomStatus) {
+	c := colly.NewCollector(colly.UserAgent(" Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.131 Safari/537.36"))
 	var decodedBody map[string]interface{}
 
 	c.OnResponse(func(r *colly.Response) {
