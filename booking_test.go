@@ -16,7 +16,8 @@ func TestNewBooker(t *testing.T) {
 
 func TestBookRoom(t *testing.T) {
 	booker := NewBooker(username, password)
-	err := booker.BookRoom("21:00", "21:30", "2019-05-16", "立项相关内容", "立项相关内容立项相关内容立项相关内容", []string{"201610733001", "201610733002", "201610733003", "201610733004", "201610733005", "201610733006"}, "15021617205")
+	roomsStatus := booker.FetchRoomsStatus("2019-05-16")
+	err := booker.BookRoom(roomsStatus[4], "21:00", "21:30", "立项相关内容", "立项相关内容立项相关内容立项相关内容", []string{"201610733001", "201610733002", "201610733003", "201610733004", "201610733005", "201610733006"}, "15021617205")
 	if err != nil {
 		t.Fatal(err)
 	}

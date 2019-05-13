@@ -24,9 +24,9 @@ type Booker struct {
 	collector *colly.Collector
 }
 
-// Room is the status of a bookable room
-type Room struct {
-	ID            int
+// RoomStatus is the status of a bookable room
+type RoomStatus struct {
+	Space         int
 	IsValid       bool
 	Name          string
 	StartTime     string
@@ -34,6 +34,7 @@ type Room struct {
 	BookedPeriods [][2]string
 	MaxPerson     int
 	MinPerson     int
+	Date          string
 }
 
 // NewBooker creates a new CheckedCollector instance
@@ -89,13 +90,13 @@ func (booker *Booker) loginAndGetP() (err error) {
 }
 
 // BookRoom takes the booking info and book a room in smu library
-func (booker *Booker) BookRoom(startTime string, endTime string, day string, title string, application string, teamusers []string, mobile string) (err error) {
+func (booker *Booker) BookRoom(room *RoomStatus, startTime string, endTime string, title string, application string, teamusers []string, mobile string) (err error) {
 	c := booker.collector.Clone()
 	requestDataStr := fmt.Sprintf(
 		"startTime=%s&endTime=%s&day=%s&title=%s&application=%s&mobile=%s&userid=%s&type=%d&isPublic=%t",
 		startTime,
 		endTime,
-		day,
+		room.Date,
 		title,
 		application,
 		mobile,
@@ -105,24 +106,37 @@ func (booker *Booker) BookRoom(startTime string, endTime string, day string, tit
 	for _, teamuser := range teamusers {
 		requestDataStr += "&teamusers[]=" + teamuser
 	}
+
+	gotToken := false
 	for _, cookie := range c.Cookies(baseURL) {
 		if cookie.Name == "access_token" {
+			gotToken = true
 			requestDataStr += "&access_token=" + cookie.Value
 			break
 		}
 	}
+	if !gotToken {
+		err = fmt.Errorf("Access token not found")
+		return
+	}
+
 	requestData := []byte(requestDataStr)
 
 	c.OnResponse(func(r *colly.Response) {
+		var resp map[string]interface{}
 		log.Println(string(r.Body[:]))
+		err = json.Unmarshal(r.Body, &resp)
+		if resp["status"].(float64) == 0 {
+			err = fmt.Errorf(resp["msg"].(string))
+		}
 	})
 
-	err = c.PostRaw(baseURL+"/api.php/spaces/3070/studybook", requestData)
+	c.PostRaw(fmt.Sprintf("%s/api.php/spaces/%d/studybook", baseURL, room.Space), requestData)
 	return
 }
 
 // FetchRoomsStatus fetches status of all rooms according to the given date
-func (booker *Booker) FetchRoomsStatus(day string) (roomsStatus []*Room) {
+func (booker *Booker) FetchRoomsStatus(day string) (roomsStatus []*RoomStatus) {
 	c := booker.collector.Clone()
 	var decodedBody map[string]interface{}
 
@@ -134,19 +148,19 @@ func (booker *Booker) FetchRoomsStatus(day string) (roomsStatus []*Room) {
 		}
 		for _, rawRoomData := range decodedBody["rooms"].([]interface{}) {
 			rawData := rawRoomData.(map[string]interface{})
-			roomsStatus = append(roomsStatus, newRoom(rawData))
+			roomsStatus = append(roomsStatus, newRoom(rawData, day))
 		}
 	})
 	c.Visit(baseURL + "/api.php/studyinfo/1?day=" + day)
 	return
 }
 
-func newRoom(rawData map[string]interface{}) (room *Room) {
-	room = new(Room)
+func newRoom(rawData map[string]interface{}, date string) (room *RoomStatus) {
+	room = new(RoomStatus)
 
 	rawDetail := rawData["detail"].(map[string]interface{})
 
-	room.ID = int(rawData["id"].(float64))
+	room.Space = int(rawDetail["space"].(float64))
 	room.IsValid = func() bool {
 		if rawData["isValid"].(float64) == 1 {
 			return true
@@ -170,5 +184,6 @@ func newRoom(rawData map[string]interface{}) (room *Room) {
 	}()
 	room.MaxPerson = int(rawDetail["maxPerson"].(float64))
 	room.MinPerson = int(rawDetail["minPerson"].(float64))
+	room.Date = date
 	return
 }
