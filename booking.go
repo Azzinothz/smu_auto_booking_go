@@ -26,26 +26,26 @@ type Booker struct {
 
 // RoomStatus is the status of a bookable room
 type RoomStatus struct {
-	Space         int
-	IsValid       bool
-	Name          string
-	StartTime     string
-	EndTime       string
-	BookedPeriods [][2]string
-	MaxPerson     int
-	MinPerson     int
-	Date          string
+	Space         int         `json:"space"`
+	IsValid       bool        `json:"is_valid"`
+	Name          string      `json:"name"`
+	StartTime     string      `json:"start_time"`
+	EndTime       string      `json:"end_time"`
+	BookedPeriods [][2]string `json:"booked_periods"`
+	MaxPerson     int         `json:"max_person"`
+	MinPerson     int         `json:"min_person"`
+	Date          string      `json:"date"`
 }
 
 // NewBooker creates a new CheckedCollector instance
-func NewBooker(username string, password string) (booker *Booker) {
+func NewBooker(username string, password string) (booker *Booker, err error) {
 	booker = &Booker{username: username, password: password}
 	booker.collector = colly.NewCollector(
 		colly.UserAgent(" Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.131 Safari/537.36"))
 	booker.getLtAndExecutionValue()
-	err := booker.loginAndGetP()
+	err = booker.loginAndGetP()
 	if err != nil {
-		log.Fatal(err)
+		return
 	}
 	booker.collector = booker.collector.Clone()
 	booker.collector.Visit(
@@ -74,7 +74,8 @@ func (booker *Booker) loginAndGetP() (err error) {
 		bodyStr := string(r.Body[:])
 		foundP := regP.FindStringSubmatch(bodyStr)
 		if foundP == nil {
-			log.Fatal("p not found")
+			err = fmt.Errorf("p not found")
+			return
 		}
 		booker.p = foundP[0][2:]
 	})
@@ -90,13 +91,13 @@ func (booker *Booker) loginAndGetP() (err error) {
 }
 
 // BookRoom takes the booking info and book a room in smu library
-func (booker *Booker) BookRoom(room *RoomStatus, startTime string, endTime string, title string, application string, teamusers []string, mobile string) (err error) {
+func (booker *Booker) BookRoom(space int, day string, startTime string, endTime string, title string, application string, teamusers []string, mobile string) (err error) {
 	c := booker.collector.Clone()
 	requestDataStr := fmt.Sprintf(
 		"startTime=%s&endTime=%s&day=%s&title=%s&application=%s&mobile=%s&userid=%s&type=%d&isPublic=%t",
 		startTime,
 		endTime,
-		room.Date,
+		day,
 		title,
 		application,
 		mobile,
@@ -131,7 +132,7 @@ func (booker *Booker) BookRoom(room *RoomStatus, startTime string, endTime strin
 		}
 	})
 
-	c.PostRaw(fmt.Sprintf("%s/api.php/spaces/%d/studybook", baseURL, room.Space), requestData)
+	c.PostRaw(fmt.Sprintf("%s/api.php/spaces/%d/studybook", baseURL, space), requestData)
 	return
 }
 

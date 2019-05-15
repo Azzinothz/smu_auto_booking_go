@@ -5,7 +5,10 @@ import (
 )
 
 func TestNewBooker(t *testing.T) {
-	booker := NewBooker(username, password)
+	booker, err := NewBooker(username, password)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, cookie := range booker.collector.Cookies(baseURL) {
 		if cookie.Name == "access_token" && len(cookie.Value) > 0 {
 			return
@@ -15,9 +18,9 @@ func TestNewBooker(t *testing.T) {
 }
 
 func TestBookRoom(t *testing.T) {
-	booker := NewBooker(username, password)
+	booker, err := NewBooker(username, password)
 	roomsStatus := FetchRoomsStatus("2019-05-16")
-	err := booker.BookRoom(roomsStatus[4], "21:00", "21:30", "立项相关内容", "立项相关内容立项相关内容立项相关内容", []string{"201610733001", "201610733002", "201610733003", "201610733004", "201610733005", "201610733006"}, "15021617205")
+	err = booker.BookRoom(roomsStatus[4].Space, roomsStatus[4].Date, "21:00", "21:30", "立项相关内容", "立项相关内容立项相关内容立项相关内容", []string{"201610733001", "201610733002", "201610733003", "201610733004", "201610733005", "201610733006"}, "15021617205")
 	if err != nil {
 		t.Fatal(err)
 	}
