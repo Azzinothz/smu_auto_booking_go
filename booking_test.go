@@ -27,7 +27,7 @@ func TestBookRoom(t *testing.T) {
 }
 
 func TestFetchRoomsStatus(t *testing.T) {
-	roomsStatus := FetchRoomsStatus("2019-05-14")
+	roomsStatus := FetchRoomsStatus("2019-05-16")
 	if len(roomsStatus) != 10 {
 		t.FailNow()
 	}
